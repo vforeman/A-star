@@ -13,6 +13,12 @@ using namespace std;
 #define GROUND "\033[47m"
 #define STARTEND "\033[45m"
 
+/*
+** Program to find the path between 2 points in a grid using
+** A* Pathfinding algorithm.
+*/
+
+// Pre-built grid, 1's represent walls, 0's represent passable space
 int gridbase[10][10]={
     {1,1,1,1,1,1,1,1,1,1},
     {1,0,0,0,0,0,0,0,0,1},
@@ -26,13 +32,15 @@ int gridbase[10][10]={
     {1,1,1,1,1,1,1,1,1,1}
 };
 
+// Forward function declarations
 void buildWorld();
 void printGrid();
 
+// Node used in A* directional graph
 struct node{
-    node*parent;
-    node*next;
-    node*prev;
+    node* parent;
+    node* next;
+    node* prev;
     float getG();
     float getH();
     float getF();
@@ -46,11 +54,17 @@ struct node{
 };
 node Start,Goal;
 
+// Gets the G-value of the node,
+// that is, the cost of the path from
+// the start to the current node
 float node::getG(){
     float Gxy=parent->g+1;//not sure if this should be parent's f or g cost
     return Gxy;
 }
 
+// Gets the H-value of the node,
+// that is, the estimate of the pat from
+// the current node to the goal
 float node::getH(){
     float Hx,Hy;
     Hx=(x-Goal.x)*(x-Goal.x);
@@ -58,29 +72,26 @@ float node::getH(){
     return sqrt(Hx+Hy)*10;
 }
 
+// Gets the F-value of the node,
+// that is, the sum of the G and G values
 float node::getF(){
     return g+h;
 }
 
-void node::setG(float G){
-    g=G;
-}
+// Setters for G, H, and F values
+void node::setG(float G){ g=G; }
+void node::setH(float H){ h=H; }
+void node::setF(float F){ f=F; }
 
-void node::setH(float H){
-    h=H;
-}
-
-void node::setF(float F){
-    f=F;
-}
-
+// The directional graph of paths from the Start
 static node GRID[10][10];
 
+// A priority queue of nodes, with pointers to the first and last elements
 class listType{
 public:
     listType();
-    node *first;
-    node*last;
+    node* first;
+    node* last;
     bool isEmpty();
     void pushNode(node*);
     bool has(node*);
@@ -88,38 +99,46 @@ public:
     void popNode(node*);
 };
 
+// Constructs an empty listType object
 listType::listType(){
     first=NULL;last=NULL;
 }
 
+// Returns if listType is empty or not
 bool listType::isEmpty(){
-    if(first==NULL){
+    if(first==NULL)
         return true;
-    }
 }
 
+// Pushes a new node to listType
 void listType::pushNode(node *nptr){
-    node*current;
+    node* current;
+    // If list is empty, first and last element is the new node
     if(first==NULL){
         first=nptr;
         last=nptr;
         
-    }else{
-        for(current=first;current!=NULL;current=current->next){
-            if(nptr->f<current->f){
-                break;}
+    }else{ // If list is not empty
+        // Traverse the list until new node has smalle F-value than an old node
+        for(current=first; current!=NULL; current=current->next){
+            if(nptr->f < current->f)
+                break;
         }
+        // If no such node exists
+        // the new node is the last node in the queue
         if(current==NULL){
             current=last;
             current->next=nptr;
             nptr->prev=current;
             last=nptr;
-        }       
+        }
+        // Else if the new node is the first node in the queue   
         else if(current==first){
             nptr->next=current;
             current->prev=nptr;
             first=nptr;
         }
+        // Otherewise the new node is somewhere in the middle of the queue
         else{
             nptr->next=current;
             nptr->prev=current->prev;
@@ -129,7 +148,8 @@ void listType::pushNode(node *nptr){
     }
 }
 
-void listType::popNode(node* thisnode){//removes first node from list and returns its ptr
+// Returns and removes pointer to first node in queue
+void listType::popNode(node* thisnode){
     if(first!=thisnode){
         if(last!=thisnode){
             thisnode->prev->next=thisnode->next;
@@ -149,19 +169,22 @@ void listType::popNode(node* thisnode){//removes first node from list and return
     thisnode->prev=NULL;
 }
 
+// Get firs element in queue
 node* listType::getFirst(){
     return first;
-}//return ptr to first node
+}
 
+// Returns true if queue has a particular node
 bool listType::has(node* thisnode){ 
+    // Traverses queue until node is found or queue is exhausted
     for(node*current=first;current!=NULL;current=current->next){
-        if((current->x==thisnode->x)&&(current->y==thisnode->y)){
+        if((current->x==thisnode->x)&&(current->y==thisnode->y))
             return true;
-        }
     }
     return false;
 }
 
+// Class type for player object
 class playerType{
 public:
     playerType(node,node);
@@ -176,12 +199,14 @@ public:
     node *adj[4];
 };
 
+// Constructs playerType
 playerType::playerType(node start,node goal){
     openlist.pushNode(&Start);
 }
 
 float getDistance(){}
 
+// Gets adjacent nodes
 void playerType::getAdjacents(){
     int xx=standon->x;
     int yy=standon->y;
@@ -196,24 +221,32 @@ void playerType::getAdjacents(){
     adj[3]=E; 
 }
 
+// Moves player to smallest F-value node
 void playerType::walk(){
     standon=openlist.getFirst();
     standon->standing=true;
 }
 
+// Moves player from Start to Goal
 void playerType::findGoal(){
     float ff,gg,hh;
     cout<<"!!!!!Player Dropped into World!!!!!\n";
     printGrid();
+    // While there is a node to visit do
     while(openlist.first!=NULL){
         walk();
-        for(node * current=openlist.first;current!=NULL;current=current->next){
+
+        // Print openlist
+        for(node * current=openlist.first; current!=NULL; current=current->next)
             cout<<"openglist: "<<current->x<<':'<<current->y<<'='<<current->f<<';';
-        }
-        for(node * current=standon;current!=NULL;current=current->parent){
+
+        // Print standon list
+        for(node * current=standon;current!=NULL;current=current->parent)
             cout<<"path: "<<current->x<<':'<<current->y<<'='<<current->f<<';';
-        }
+
         cout<<endl;
+
+        // Set standon node as 'on path'
         gridbase[standon->x][standon->y]=8;
         cout<<".....walking\n";printGrid();
         if((standon->x==Goal.x)&&(standon->y==Goal.y)){
@@ -222,23 +255,23 @@ void playerType::findGoal(){
             printPath();
             break;
         }
-        //generate list of pointers to surrounding nodes
+        // Generate list of pointers to surrounding nodes
         getAdjacents();
         cout<<".....Looking Around\n";
-        for(int k=0;k<4;++k){//evaluate all nodes in that list
+        for(int k=0;k<4;++k){// Evaluate all nodes in that list
             gg=standon->g+1;
             hh=adj[k]->getH();
             ff=gg+hh;
-            if(adj[k]->solid==true){//if node is a wall do nothing
+            if(adj[k]->solid==true){// If node is a wall do nothing
                 cout<<"!!No,Thats a Wall!!"<<adj[k]->x<<','<<adj[k]->y<<endl;
             }
-            else if(closedlist.has(adj[k])){//if node is in closed list check if current g is lower
+            else if(closedlist.has(adj[k])){// If node is in closed list check if current g is lower
                 if(adj[k]->g>gg){
                     adj[k]->g=gg;
                     adj[k]->f=ff;
                     adj[k]->parent=standon;
                 }
-            }else if(openlist.has(adj[k])){//if node is in openlist check if current g is lower
+            }else if(openlist.has(adj[k])){// If node is in openlist check if current g is lower
                 if(adj[k]->g>gg){
                     adj[k]->g=gg;
                     adj[k]->f=ff;
@@ -248,21 +281,21 @@ void playerType::findGoal(){
                 }
             }else{
                 cout<<"!!Havent been here yet!!"<<adj[k]->x<<','<<adj[k]->y<<endl;
-                //unchecked node set parent to current and get fcost
+                // Unchecked node set parent to current and get fcost
                 adj[k]->parent=standon;
-                //cout<<"check";
                 cout<<"g:"<<gg<<' ';
                 cout<<"h:"<<hh<<' ';
                 cout<<"f:"<<ff<<endl;
+
                 adj[k]->setG(gg);
                 adj[k]->setH(hh);
                 adj[k]->setF(ff);
                 openlist.pushNode(adj[k]);
             }
-        }//end of for statement
-        if((standon->x==Goal.x)&&(standon->y==Goal.y)){
+        }// End of for statement
+        if((standon->x==Goal.x)&&(standon->y==Goal.y))
             break;
-        }
+
         openlist.popNode(standon);
         closedlist.pushNode(standon);
         standon->standing=false;
@@ -271,8 +304,10 @@ void playerType::findGoal(){
 
 void playerType::printPath(){}
 
+// Forward declaration
 void setstartfinish(int,int,int,int);
 
+// Program start point
 int main(){
     printGrid();
     buildWorld();
@@ -286,6 +321,7 @@ int main(){
     return 0;
 }
 
+// Sets the start and finish locations
 void setstartfinish(int sx,int sy,int ex,int ey){
     Start=GRID[sx][sy];
     cout<<"Calculating Start.....completed\n"; 
@@ -295,6 +331,7 @@ void setstartfinish(int sx,int sy,int ex,int ey){
     cout<<"Calculating Goal.....completed\n";
 }
 
+// Initializes GRID
 void buildWorld(){
     cout<<"Building World.....";
     for(int d=0;d<10;++d){
@@ -310,6 +347,7 @@ void buildWorld(){
     cout<<"completed\n";
 }
 
+// Prints gridbase
 void printGrid(){
     int space;
     cout<<" ------------------------------\n";
